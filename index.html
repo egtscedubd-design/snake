@@ -1,0 +1,541 @@
+ <!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>বাচ্চাদের সাপের খেলা - Snake Game</title>
+    <!-- Google Fonts: Fredoka & Hind Siliguri for child-friendly Bengali fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Hind+Siliguri:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            font-family: 'Hind Siliguri', 'Fredoka', cursive, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background: linear-gradient(135deg, #a8ff78 0%, #78ffd6 100%);
+            min-height: 100vh;
+        }
+
+        /* Custom Box Shadows & Buttons */
+        .game-card {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            border: 6px solid #4ade80;
+        }
+
+        .btn-fun {
+            transition: all 0.15s ease;
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-fun:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-arrow {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            box-shadow: 0 6px 0 #0369a1;
+        }
+
+        .btn-arrow:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #0369a1;
+        }
+
+        /* Canvas styling */
+        #gameCanvas {
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#bbf7d0 1.5px, transparent 1.5px);
+            background-size: 20px 20px;
+            border-radius: 1rem;
+        }
+
+        /* Pulse animation for fruits */
+        @keyframes bounce-subtle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .animate-bounce-subtle {
+            animation: bounce-subtle 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-2 md:p-4 text-slate-800">
+
+    <!-- Game Container -->
+    <div class="game-card bg-white rounded-3xl p-4 md:p-6 w-full max-w-xl flex flex-col items-center relative overflow-hidden my-auto">
+        
+        <!-- Header / Top Bar -->
+        <div class="w-full flex items-center justify-between mb-3 bg-emerald-100 p-3 rounded-2xl border-2 border-emerald-300">
+            <!-- Score display -->
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl md:text-3xl">🍎</span>
+                <div>
+                    <div class="text-xs font-bold text-emerald-700">স্কোর</div>
+                    <div id="score" class="text-xl md:text-2xl font-black text-emerald-800 leading-none">০</div>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-xl md:text-2xl font-black text-emerald-600 tracking-wide hidden sm:block">
+                🐍 সাপের খেলা!
+            </h1>
+
+            <!-- High Score, Speed & Sound Toggle -->
+            <div class="flex items-center space-x-2">
+                <!-- Speed Toggle Button -->
+                <button id="speedToggleBtn" onclick="toggleSpeed()" class="btn-fun bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-xl border-2 border-emerald-600 font-bold text-xs flex items-center gap-1" title="গতি পরিবর্তন করুন">
+                    <span>⚡</span>
+                    <span id="speedLabel">মাঝারি</span>
+                </button>
+
+                <!-- High Score -->
+                <div class="flex items-center space-x-1 bg-yellow-100 px-2.5 py-1 rounded-xl border border-yellow-300">
+                    <span class="text-lg">🏆</span>
+                    <div>
+                        <div class="text-[10px] font-bold text-yellow-700">সেরা</div>
+                        <div id="highScore" class="text-base font-black text-yellow-800 leading-none">০</div>
+                    </div>
+                </div>
+
+                <!-- Sound Button -->
+                <button id="soundToggleBtn" onclick="toggleSound()" class="btn-fun bg-white p-2 rounded-xl border-2 border-slate-200 text-lg" title="শব্দ অন/অফ">
+                    🔊
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Wrapper -->
+        <div class="relative w-full aspect-square max-w-[400px] flex justify-center items-center">
+            <canvas id="gameCanvas" width="400" height="400" class="w-full h-full border-4 border-emerald-400 shadow-inner"></canvas>
+
+            <!-- Start Overlay -->
+            <div id="startOverlay" class="absolute inset-0 bg-emerald-500/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 text-white text-center">
+                <div class="text-6xl mb-2 animate-bounce-subtle">🐍🍎</div>
+                <h2 class="text-3xl font-black mb-2 text-yellow-300">সাপের মজার খেলা!</h2>
+                <p class="text-sm md:text-base font-medium mb-4 text-emerald-100">খাবার খাও এবং সাপকে বড় করো! দেওয়াল বা নিজের গায়ে ধাক্কা মেরো না।</p>
+                
+                <!-- Speed Selection on Start Screen -->
+                <div class="mb-5 bg-emerald-600/60 p-2 rounded-2xl border border-emerald-400/50 flex items-center gap-2">
+                    <span class="text-xs font-bold text-yellow-200 ml-1">গতি পছন্দ করো:</span>
+                    <button onclick="setSpeedMode('EASY')" id="speedBtnEasy" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-white/20 text-white">🐢 ধীর</button>
+                    <button onclick="setSpeedMode('MEDIUM')" id="speedBtnMedium" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-yellow-400 text-emerald-950">🐇 মাঝারি</button>
+                    <button onclick="setSpeedMode('FAST')" id="speedBtnFast" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-white/20 text-white">🚀 দ্রুত</button>
+                </div>
+
+                <button onclick="startGame()" class="btn-fun bg-yellow-400 hover:bg-yellow-300 text-emerald-950 font-black text-2xl px-8 py-3 rounded-2xl border-4 border-yellow-200 transition transform hover:scale-105 active:scale-95">
+                    ▶ শুরু করুন!
+                </button>
+            </div>
+
+            <!-- Game Over Overlay -->
+            <div id="gameOverOverlay" class="hidden absolute inset-0 bg-red-500/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 text-white text-center z-10 animate-fade-in">
+                <div class="text-6xl mb-2">😵💥</div>
+                <h2 class="text-3xl font-black mb-1 text-yellow-300">খেলা শেষ!</h2>
+                <p id="gameOverReason" class="text-base font-semibold mb-3 text-red-100">সাপ ধাক্কা খেয়েছে!</p>
+                
+                <!-- Score Card -->
+                <div class="bg-white/20 p-3 rounded-xl mb-6 w-full max-w-[200px] border border-white/30">
+                    <div class="text-sm text-yellow-200 font-bold">আপনার স্কোর</div>
+                    <div id="finalScore" class="text-3xl font-black text-white">০</div>
+                </div>
+
+                <button onclick="startGame()" class="btn-fun bg-yellow-400 hover:bg-yellow-300 text-emerald-950 font-black text-2xl px-8 py-3 rounded-2xl border-4 border-yellow-200 transition transform hover:scale-105 active:scale-95">
+                    🔄 আবার খেলুন
+                </button>
+            </div>
+        </div>
+
+        <!-- On-Screen Controls for Touch / Easy Click -->
+        <div class="mt-4 w-full max-w-[280px] flex flex-col items-center gap-2">
+            <!-- Up -->
+            <button onclick="handleDirectionInput('UP')" class="btn-arrow w-16 h-14 rounded-2xl text-white text-2xl flex items-center justify-center">
+                ▲
+            </button>
+            
+            <!-- Left / Down / Right -->
+            <div class="flex justify-between w-full">
+                <button onclick="handleDirectionInput('LEFT')" class="btn-arrow w-16 h-14 rounded-2xl text-white text-2xl flex items-center justify-center">
+                    ◀
+                </button>
+                <button onclick="handleDirectionInput('DOWN')" class="btn-arrow w-16 h-14 rounded-2xl text-white text-2xl flex items-center justify-center">
+                    ▼
+                </button>
+                <button onclick="handleDirectionInput('RIGHT')" class="btn-arrow w-16 h-14 rounded-2xl text-white text-2xl flex items-center justify-center">
+                    ▶
+                </button>
+            </div>
+        </div>
+
+        <!-- Instructions Footer -->
+        <div class="mt-3 text-center text-xs font-semibold text-slate-500">
+            💡 টিপস: কিবোর্ডের <span class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">Arrow Keys</span> ব্যবহার করে খেলতে পারো!
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Game Configuration & Variables ---
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const GRID_SIZE = 20; // Number of cells per row/column (20x20)
+        let CELL_SIZE = canvas.width / GRID_SIZE; // Dynamically calculated
+
+        let snake = [];
+        let food = { x: 0, y: 0, type: 'apple' };
+        let direction = 'RIGHT';
+        let nextDirection = 'RIGHT';
+        let score = 0;
+        let highScore = localStorage.getItem('snake_high_score') || 0;
+        let gameLoopTimer = null;
+        let isPlaying = false;
+        let soundEnabled = true;
+
+        // Speed Modes (in milliseconds interval)
+        const SPEED_MODES = {
+            EASY: { interval: 200, label: '🐢 ধীর' },
+            MEDIUM: { interval: 140, label: '🐇 মাঝারি' },
+            FAST: { interval: 90, label: '🚀 দ্রুত' }
+        };
+        let currentSpeedKey = 'MEDIUM';
+
+        // Food types with different visual styles and points
+        const FOOD_TYPES = [
+            { name: 'apple', icon: '🍎', points: 10 },
+            { name: 'banana', icon: '🍌', points: 15 },
+            { name: 'strawberry', icon: '🍓', points: 20 },
+            { name: 'star', icon: '⭐', points: 30 }
+        ];
+
+        // English to Bengali Digit Converter
+        const convertToBengaliDigits = (num) => {
+            const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            return num.toString().split('').map(digit => bengaliDigits[digit] || digit).join('');
+        };
+
+        // Initialize display score
+        document.getElementById("highScore").innerText = convertToBengaliDigits(highScore);
+
+        // --- Speed Control Logic ---
+        function setSpeedMode(modeKey) {
+            currentSpeedKey = modeKey;
+            playSound('click');
+            
+            // Update speed label on top bar
+            document.getElementById("speedLabel").innerText = SPEED_MODES[currentSpeedKey].label.split(' ')[1];
+
+            // Update start overlay speed selector UI
+            const easyBtn = document.getElementById("speedBtnEasy");
+            const medBtn = document.getElementById("speedBtnMedium");
+            const fastBtn = document.getElementById("speedBtnFast");
+
+            [easyBtn, medBtn, fastBtn].forEach(btn => {
+                btn.className = "px-2.5 py-1 rounded-xl text-xs font-bold bg-white/20 text-white";
+            });
+
+            if (modeKey === 'EASY') easyBtn.className = "px-2.5 py-1 rounded-xl text-xs font-bold bg-yellow-400 text-emerald-950";
+            if (modeKey === 'MEDIUM') medBtn.className = "px-2.5 py-1 rounded-xl text-xs font-bold bg-yellow-400 text-emerald-950";
+            if (modeKey === 'FAST') fastBtn.className = "px-2.5 py-1 rounded-xl text-xs font-bold bg-yellow-400 text-emerald-950";
+
+            // If game is active, update interval seamlessly
+            if (isPlaying) {
+                clearInterval(gameLoopTimer);
+                gameLoopTimer = setInterval(gameUpdate, SPEED_MODES[currentSpeedKey].interval);
+            }
+        }
+
+        function toggleSpeed() {
+            if (currentSpeedKey === 'EASY') setSpeedMode('MEDIUM');
+            else if (currentSpeedKey === 'MEDIUM') setSpeedMode('FAST');
+            else setSpeedMode('EASY');
+        }
+
+        // --- Web Audio API (Sound Effects) ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'eat') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'click') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'gameover') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(250, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.4);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'highscore') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                }
+            } catch (e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById("soundToggleBtn");
+            btn.innerText = soundEnabled ? "🔊" : "🔇";
+            btn.classList.toggle("opacity-50", !soundEnabled);
+            if(soundEnabled) playSound('click');
+        }
+
+        // --- Game Setup & Core Loop ---
+        function startGame() {
+            playSound('click');
+            initAudio();
+
+            // Reset variables
+            snake = [
+                { x: 5, y: 10 },
+                { x: 4, y: 10 },
+                { x: 3, y: 10 }
+            ];
+            direction = 'RIGHT';
+            nextDirection = 'RIGHT';
+            score = 0;
+            isPlaying = true;
+
+            // UI Updates
+            document.getElementById("score").innerText = convertToBengaliDigits(score);
+            document.getElementById("startOverlay").classList.add("hidden");
+            document.getElementById("gameOverOverlay").classList.add("hidden");
+
+            spawnFood();
+
+            // Clear any existing timer
+            if (gameLoopTimer) clearInterval(gameLoopTimer);
+
+            // Set interval based on selected speed mode
+            gameLoopTimer = setInterval(gameUpdate, SPEED_MODES[currentSpeedKey].interval);
+        }
+
+        function spawnFood() {
+            let valid = false;
+            let newX, newY;
+
+            while (!valid) {
+                newX = Math.floor(Math.random() * GRID_SIZE);
+                newY = Math.floor(Math.random() * GRID_SIZE);
+                valid = !snake.some(segment => segment.x === newX && segment.y === newY);
+            }
+
+            const randomType = FOOD_TYPES[Math.floor(Math.random() * FOOD_TYPES.length)];
+            food = { x: newX, y: newY, ...randomType };
+        }
+
+        function handleDirectionInput(newDir) {
+            playSound('click');
+            if (newDir === 'UP' && direction !== 'DOWN') nextDirection = 'UP';
+            if (newDir === 'DOWN' && direction !== 'UP') nextDirection = 'DOWN';
+            if (newDir === 'LEFT' && direction !== 'RIGHT') nextDirection = 'LEFT';
+            if (newDir === 'RIGHT' && direction !== 'LEFT') nextDirection = 'RIGHT';
+        }
+
+        // Keyboard Controls
+        window.addEventListener("keydown", (e) => {
+            if (!isPlaying) return;
+            switch (e.key) {
+                case "ArrowUp":
+                case "w":
+                case "W":
+                    handleDirectionInput('UP');
+                    break;
+                case "ArrowDown":
+                case "s":
+                case "S":
+                    handleDirectionInput('DOWN');
+                    break;
+                case "ArrowLeft":
+                case "a":
+                case "A":
+                    handleDirectionInput('LEFT');
+                    break;
+                case "ArrowRight":
+                case "d":
+                case "D":
+                    handleDirectionInput('RIGHT');
+                    break;
+            }
+        });
+
+        // Main game update logic
+        function gameUpdate() {
+            direction = nextDirection;
+
+            const head = { ...snake[0] };
+            if (direction === 'UP') head.y -= 1;
+            if (direction === 'DOWN') head.y += 1;
+            if (direction === 'LEFT') head.x -= 1;
+            if (direction === 'RIGHT') head.x += 1;
+
+            // Wall Collision Check
+            if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+                return gameOver("দেওয়ালে ধাক্কা খেয়েছে!");
+            }
+
+            // Self Collision Check
+            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                return gameOver("নিজের সাথে ধাক্কা খেয়েছে!");
+            }
+
+            snake.unshift(head);
+
+            // Check if Snake ate the Food
+            if (head.x === food.x && head.y === food.y) {
+                score += food.points;
+                document.getElementById("score").innerText = convertToBengaliDigits(score);
+                
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('snake_high_score', highScore);
+                    document.getElementById("highScore").innerText = convertToBengaliDigits(highScore);
+                    playSound('highscore');
+                } else {
+                    playSound('eat');
+                }
+
+                spawnFood();
+            } else {
+                snake.pop();
+            }
+
+            drawGame();
+        }
+
+        // Render graphics on Canvas
+        function drawGame() {
+            CELL_SIZE = canvas.width / GRID_SIZE;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Food
+            ctx.font = `${CELL_SIZE * 0.8}px 'Hind Siliguri', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                food.icon, 
+                (food.x * CELL_SIZE) + CELL_SIZE / 2, 
+                (food.y * CELL_SIZE) + CELL_SIZE / 2 + 2
+            );
+
+            // Draw Snake
+            snake.forEach((segment, index) => {
+                const x = segment.x * CELL_SIZE;
+                const y = segment.y * CELL_SIZE;
+
+                ctx.beginPath();
+                if (index === 0) {
+                    // Snake Head
+                    ctx.fillStyle = "#22c55e";
+                    ctx.roundRect(x + 1, y + 1, CELL_SIZE - 2, CELL_SIZE - 2, 10);
+                    ctx.fill();
+
+                    // Eyes
+                    ctx.fillStyle = "#ffffff";
+                    let eyeX1, eyeY1, eyeX2, eyeY2;
+                    if (direction === 'RIGHT') {
+                        eyeX1 = x + CELL_SIZE * 0.7; eyeY1 = y + CELL_SIZE * 0.3;
+                        eyeX2 = x + CELL_SIZE * 0.7; eyeY2 = y + CELL_SIZE * 0.7;
+                    } else if (direction === 'LEFT') {
+                        eyeX1 = x + CELL_SIZE * 0.3; eyeY1 = y + CELL_SIZE * 0.3;
+                        eyeX2 = x + CELL_SIZE * 0.3; eyeY2 = y + CELL_SIZE * 0.7;
+                    } else if (direction === 'UP') {
+                        eyeX1 = x + CELL_SIZE * 0.3; eyeY1 = y + CELL_SIZE * 0.3;
+                        eyeX2 = x + CELL_SIZE * 0.7; eyeY2 = y + CELL_SIZE * 0.3;
+                    } else { // DOWN
+                        eyeX1 = x + CELL_SIZE * 0.3; eyeY1 = y + CELL_SIZE * 0.7;
+                        eyeX2 = x + CELL_SIZE * 0.7; eyeY2 = y + CELL_SIZE * 0.7;
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(eyeX1, eyeY1, 4, 0, Math.PI * 2);
+                    ctx.arc(eyeX2, eyeY2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#000000";
+                    ctx.beginPath();
+                    ctx.arc(eyeX1, eyeY1, 2, 0, Math.PI * 2);
+                    ctx.arc(eyeX2, eyeY2, 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                } else {
+                    // Snake Body
+                    ctx.fillStyle = index % 2 === 0 ? "#4ade80" : "#86efac";
+                    ctx.roundRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4, 8);
+                    ctx.fill();
+                }
+            });
+        }
+
+        function gameOver(reason) {
+            isPlaying = false;
+            clearInterval(gameLoopTimer);
+            playSound('gameover');
+
+            document.getElementById("gameOverReason").innerText = reason;
+            document.getElementById("finalScore").innerText = convertToBengaliDigits(score);
+            document.getElementById("gameOverOverlay").classList.remove("hidden");
+        }
+
+        function handleResize() {
+            const containerWidth = canvas.parentElement.clientWidth;
+            canvas.width = containerWidth;
+            canvas.height = containerWidth;
+            if (isPlaying) drawGame();
+        }
+
+        window.addEventListener("resize", handleResize);
+        handleResize();
+    </script>
+</body>
+</html>
